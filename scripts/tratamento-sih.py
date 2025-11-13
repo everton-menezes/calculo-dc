@@ -89,12 +89,45 @@ df["data"] = df[col0].map(para_data_ptbr)
 erros = df["data"].isna().sum()
 print("Linhas sem data:", erros)
 
-                        
-# Impressões de teste
-print("\nDimensão do DF:", df.shape)
-print("Colunas detectadas:", list(df.columns))
-print("\nPrimeiras 5 linhas:")
-print(df.head(10))
+# remover a coluna textual "Ano/mês processamento"
+df = df.drop(columns=[col0])
+df = df.iloc[:, [2, 0, 1]]
 
-print("\nÚltimas 5 linhas (checar que 'Total' sumiu):")
-print(df.tail(5))
+print("Colunas após remover a coluna textual:", list(df.columns))
+
+df["data"] = pd.to_datetime(df["data"], errors="coerce")
+data_min = df["data"].min()
+data_max = df["data"].max()
+aaaamm_min = data_min.strftime("%Y%m") if pd.notna(data_min) else "000000"
+aaaamm_max = data_max.strftime("%Y%m") if pd.notna(data_max) else "000000"
+print("Faixa para nome:", aaaamm_min, aaaamm_max)
+
+linha_estab = next((L for L in linhas if "Estabelecimento:" in L), None)
+if linha_estab is None:
+    raise RuntimeError("Não encontrei a linha 'Estabelecimento:' no cabeçalho.")
+m = re.search(r"Estabelecimento:\s*(\d+)", linha_estab)
+if not m:
+    raise RuntimeError("Não consegui extrair o CNES da linha de Estabelecimento.")
+cnes = m.group(1)
+print("CNES extraído:", cnes)
+
+caminho_saida = Path(f"data/output/sih_{cnes}_{aaaamm_min}-{aaaamm_max}.csv")
+
+# Recomendação: separador ';' e UTF-8 com BOM (melhor para Excel)
+df.to_csv(
+    caminho_saida,
+    sep=";",
+    index=False,
+    encoding="utf-8-sig"
+)
+print("Arquivo salvo em:", caminho_saida)
+
+# Impressões de teste
+'''
+    print("\nDimensão do DF:", df.shape)
+    print("\nPrimeiras 5 linhas:")
+    print(df.head(10))
+
+    print("\nÚltimas 5 linhas (checar que 'Total' sumiu):")
+    print(df.tail(5))
+'''
